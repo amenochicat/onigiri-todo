@@ -359,6 +359,7 @@ function onDragEnd(){
     const [moved] = active.splice(drag.origIdx,1);
     active.splice(drag.targetIdx,0,moved);
     state.tasks[key] = [...active,...done];
+    saveTasks();
   }
 
   drag.active = false;
@@ -374,11 +375,30 @@ function onDragEnd(){
 ──────────────────────────────────────── */
 const TABS=[{k:"today",l:"今日",ic:"☀️"},{k:"tomorrow",l:"明日",ic:"🌙"},{k:"later",l:"あとで",ic:"📌"}];
 let uid=100;
-let state={activeIdx:0,showAdd:false,tasks:{
+
+const DEFAULT_TASKS={
   today:[{id:1,text:"プロジェクト提案書を作成する",done:false},{id:2,text:"チームミーティングの準備をする",done:false},{id:3,text:"重要メールに返信する",done:true}],
   tomorrow:[{id:4,text:"クライアントとの打ち合わせ",done:false},{id:5,text:"デザインレビューに参加する",done:false}],
   later:[{id:6,text:"UIデザインの本を読む",done:false},{id:7,text:"新しいアイデアをメモする",done:false}]
-}};
+};
+
+function loadTasks(){
+  try{
+    const saved=localStorage.getItem('onigiri-tasks');
+    if(saved){
+      const parsed=JSON.parse(saved);
+      const allIds=[...parsed.today,...parsed.tomorrow,...parsed.later].map(t=>t.id);
+      if(allIds.length) uid=Math.max(...allIds)+1;
+      return parsed;
+    }
+  }catch(e){}
+  return DEFAULT_TASKS;
+}
+function saveTasks(){
+  try{ localStorage.setItem('onigiri-tasks',JSON.stringify(state.tasks)); }catch(e){}
+}
+
+let state={activeIdx:0,showAdd:false,tasks:loadTasks()};
 
 function taskCard(t,delay){
   const sd = t.done
@@ -540,10 +560,12 @@ function toggleTask(id, btnEl){
 
     setTimeout(()=>{
       state.tasks[key] = state.tasks[key].map(t=>t.id===id?{...t,done:true}:t);
+      saveTasks();
       render();
     }, 480);
   } else {
     state.tasks[key] = state.tasks[key].map(t=>t.id===id?{...t,done:false}:t);
+    saveTasks();
     render();
   }
 }
@@ -553,6 +575,7 @@ function doAdd(){
   const txt=(el.value||"").trim(); if(!txt)return;
   const key=TABS[state.activeIdx].k;
   state.tasks[key]=[...state.tasks[key],{id:uid++,text:txt,done:false}];
+  saveTasks();
   state.showAdd=false; render();
 }
 
